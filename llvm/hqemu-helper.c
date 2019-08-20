@@ -3,6 +3,9 @@
 #include "exec/helper-proto.h"
 #include "hqemu.h"
 #include "fpu/softfloat-native.h"
+#include "metrics_c.h"
+
+#include <stdio.h>
 
 CPUArchState basereg;
 target_ulong pcid;
@@ -13,6 +16,7 @@ XMMReg xmm_reg;
 
 extern TranslationBlock *tbs;
 
+void* METRICS = NULL;
 void *ibtc_lookup(CPUArchState *env);
 void *cpbl_lookup(CPUArchState *env);
 int cpbl_validate(CPUArchState *env, target_ulong pc, int id);
@@ -72,6 +76,35 @@ void helper_profile_exec(CPUArchState *env, void *counter_p, int idx)
     counter[cpu->cpu_index][idx]++;
 }
 
+
+
+volatile uint64_t time_elapsed = 0;
+volatile uint64_t reg_pc = 0;
+
+static __inline__ unsigned long long rdtsc(void)
+{
+  unsigned hi, lo;
+  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+  return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+}
+
+void helper_timestamp_begin(CPUArchState* env, uint64_t id)
+{
+    //CPUState *cpu = ENV_GET_CPU(env);
+    reg_pc = id;
+    time_elapsed = rdtsc();
+    increment_num_executions(METRICS, reg_pc);
+}
+
+void helper_timestamp_end(CPUArchState* env, uint64_t id)
+{
+    //target_ulong pc = cpu_get_pc(env);
+    //uint64_t* counter = (uint64_t*) counter_p;
+    increment_exec_time(METRICS, reg_pc, rdtsc()-time_elapsed);
+    //    printf("Elapsed time on region %lx : %llu cycles\n", reg_pc, rdtsc()-time_elapsed);
+
+    time_elapsed = reg_pc = 0;
+}
 /*
  * vim: ts=8 sts=4 sw=4 expandtab
  */

@@ -73,7 +73,7 @@ static std::vector<TCGHelperInfo> IllegalHelper = {
 };
 
 
-#define DEF_HELPER_FLAGS_0(name, flags, ret) { (void *)helper_##name, "helper_"#name }, 
+#define DEF_HELPER_FLAGS_0(name, flags, ret) { (void *)helper_##name, "helper_"#name },
 #define DEF_HELPER_FLAGS_1(name, flags, ret, t1) DEF_HELPER_FLAGS_0(name, flags, ret)
 #define DEF_HELPER_FLAGS_2(name, flags, ret, t1, t2) DEF_HELPER_FLAGS_0(name, flags, ret)
 #define DEF_HELPER_FLAGS_3(name, flags, ret, t1, t2, t3) DEF_HELPER_FLAGS_0(name, flags, ret)
@@ -407,6 +407,8 @@ void AddDependentSymbols(LLVMTranslator *Translator)
 {
     Translator->AddSymbol("helper_verify_tb", (void*)helper_verify_tb);
     Translator->AddSymbol("helper_lookup_ibtc", (void*)helper_lookup_ibtc);
+    Translator->AddSymbol("helper_timestamp_begin", (void*)helper_timestamp_begin);
+    Translator->AddSymbol("helper_timestamp_end", (void*)helper_timestamp_end);
     Translator->AddSymbol("guest_base", (void*)&guest_base);
     Translator->AddSymbol("cpu_loop_exit", (void*)cpu_loop_exit);
     Translator->AddSymbol("qemu_logfile", (void*)&qemu_logfile);
@@ -471,7 +473,7 @@ Value *getBaseWithConstantOffset(const DataLayout *DL, Value *Ptr,
         ConstantInt *OpC = cast<ConstantInt>(*I);
         if (OpC->isZero())
             continue;
-        
+
         /* Handle a struct and array indices which add their offset to the
          * pointer. */
 #if defined(LLVM_V35) || defined(LLVM_V38) || defined(LLVM_V39)
@@ -553,7 +555,7 @@ Value *StripPointerWithConstantOffset(const DataLayout *DL, Value *Ptr,
 {
     if (!Ptr->getType()->isPointerTy())
         return Ptr;
-    
+
     std::set<Value *> Visited;
     Visited.insert(Ptr);
     Value *V = Ptr;
@@ -589,7 +591,7 @@ Value *StripPointerWithConstantOffset(const DataLayout *DL, Value *Ptr,
             break;
         Visited.insert(V);
     } while (true);
-    
+
     return V;
 }
 
@@ -658,7 +660,7 @@ void EventListener::NotifyObjectEmitted(const ObjectImage &Obj)
             NumFunc++;
             if (!Context)
                 continue;
-            
+
             DILineInfoTable  Lines = Context->getLineInfoForAddressRange(Code, Size);
             DILineInfoTable::iterator  Begin = Lines.begin();
             DILineInfoTable::iterator  End = Lines.end();

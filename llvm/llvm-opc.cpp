@@ -19,7 +19,8 @@
 #include "llvm-target.h"
 #include "llvm-state.h"
 #include "llvm-opc.h"
-
+#include "metrics.h"
+#include <iostream>
 
 #define INLINE_THRESHOLD    100     /* max # inlined instructions */
 #define INLINE_INSTCOUNT    20      /* max instruction count for inlining a small function */
@@ -49,7 +50,7 @@ static IRFactory::FuncPtr OpcFunc[] = {
 extern LLVMEnv *LLEnv;
 extern hqemu::Mutex llvm_global_lock;
 extern hqemu::Mutex llvm_debug_lock;
-
+extern void* METRICS;
 /*
  * IRFactory()
  */
@@ -424,6 +425,7 @@ static inline std::string getGuestSymbol(target_ulong pc)
 void IRFactory::CreateFunction()
 {
     target_ulong pc = Builder->getEntryNode()->getGuestPC();
+
     std::string Name = getGuestSymbol(pc) +
                        Builder->getPCString(Builder->getEntryNode());
 
@@ -444,6 +446,7 @@ void IRFactory::CreateFunction()
     CurrBB = BasicBlock::Create(*Context, "entry", Func);
     LastInst = BranchInst::Create(CurrBB, InitBB);
     new UnreachableInst(*Context, ExitBB);
+
 
     /* Setup base register for CPUArchState pointer, and register for
      * guest_base. */
@@ -471,6 +474,9 @@ void IRFactory::CreateFunction()
     CPU = CPUReg.Base;
     CPUStruct = new BitCastInst(CPU, CPUReg.Ty, "cpu.struct", LastInst);
     GEPInsertPos = CPUStruct;
+
+    //Inserts the timestamp
+    InsertTimestampBegin(pc);
 }
 
 /* Prepare an LLVM BasicBlock for a new guest block. */
@@ -710,6 +716,13 @@ void IRFactory::InitializeLLVMPasses(legacy::FunctionPassManager *FPM)
 #endif
 }
 
+static __inline__ unsigned long long rdtsc(void)
+{
+  unsigned hi, lo;
+  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+  return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+}
+
 void IRFactory::Optimize()
 {
 #define addPass(PM, P) do { PM->add(P); } while(0)
@@ -738,7 +751,6 @@ void IRFactory::Optimize()
         addPass(FPM, createCombineCasts(this));
 
         FPM->run(*Func);
-
         delete FPM;
     }
 #endif
@@ -842,6 +854,9 @@ void IRFactory::FinalizeObject()
 /* Start the LLVM JIT compilation. */
 void IRFactory::Compile()
 {
+    target_ulong pc = Builder->getEntryNode()->getGuestPC();
+    auto time_val = rdtsc();
+
     dbg() << DEBUG_LLVM
           << "Translator " << Translator.getID() << " starts compiling...\n";
 
@@ -858,6 +873,10 @@ void IRFactory::Compile()
     EE->finalizeObject();
 
     FinalizeObject();
+
+    time_val = rdtsc() - time_val;
+    increment_num_compilations(METRICS, pc);
+    increment_comp_time(METRICS, pc, time_val);
 
     dbg() << DEBUG_LLVM << __func__ << ": done.\n";
 }
@@ -3786,17 +3805,18 @@ void IRFactory::InsertLookupIBTC(GraphNode *CurrNode)
 
     if (CommonBB.find("ibtc") == CommonBB.end()) {
         BB = CommonBB["ibtc"] = BasicBlock::Create(*Context, "ibtc", Func);
-
         SmallVector<Value *, 4> Params;
+
+        //InsertEnd();
+
         Function *F = ResolveFunction("helper_lookup_ibtc");
         Value *Env = ConvertCPUType(F, 0, BB);
-
         Params.push_back(Env);
         CallInst *CI = CallInst::Create(F, Params, "", BB);
+
         IndirectBrInst *IB = IndirectBrInst::Create(CI, 1, BB);
         MF->setConst(CI);
         MF->setExit(CI);
-
         IndirectBrs.push_back(IB);
         toSink.push_back(BB);
     }
@@ -3819,6 +3839,28 @@ void IRFactory::InsertLookupCPBL(GraphNode *CurrNode)
 
     IndirectBrs.push_back(IB);
     toSink.push_back(CurrBB);
+}
+
+void IRFactory::InsertTimestampBegin(uint64_t id)
+{
+    SmallVector<Value *, 4> Params;
+    Function *F = ResolveFunction("helper_timestamp_begin");
+    Value *Env = ConvertCPUType(F, 0, LastInst);
+    Params.push_back(Env);
+    Params.push_back(CONST64(id));
+    CallInst::Create(F, Params, "", LastInst);
+    //MF->setConst(CI);
+}
+
+void IRFactory::InsertTimestampEnd(uint64_t id)
+{
+    SmallVector<Value *, 4> Params;
+    Function *F = ResolveFunction("helper_timestamp_end");
+    Value *Env = ConvertCPUType(F, 0, LastInst);
+    Params.push_back(Env);
+    Params.push_back(CONST64(id));
+    CallInst::Create(F, Params, "", LastInst);
+    //MF->setConst(CI);
 }
 
 void IRFactory::TraceValidateCPBL(GraphNode *NextNode, StoreInst *StorePC)
@@ -3913,6 +3955,7 @@ void IRFactory::TraceLinkDirectJump(GraphNode *NextNode, StoreInst *SI)
 #endif
     /* First set the branch to exit BB, and the link will be resolved
        at the trace finalization procedure. */
+
     BranchInst *BI = BranchInst::Create(ExitBB, LastInst);
     Builder->setBranch(BI, NextNode);
 }
@@ -3959,19 +4002,23 @@ void IRFactory::TraceLink(StoreInst *SI)
         SaveGlobals(COHERENCE_ALL, LastInst);
 
 #if defined(CONFIG_USER_ONLY)
-        for (auto NextNode : CurrNode->getChildren())
+        for (auto NextNode : CurrNode->getChildren()) {
             TraceLinkIndirectJump(NextNode, SI);
+        }
 #endif
+        //InsertTimestamp(CurrNode);
         InsertLookupIBTC(CurrNode);
     } else {
         /* Direct branch. */
         target_ulong pc = CI->getZExtValue();
         GraphNode *NextNode = findNextNode(pc);
         if (NextNode) {
+            //InsertTimestamp(CurrNode);
             TraceLinkDirectJump(NextNode, SI);
             return;
         }
 
+        //InsertTimestamp(CurrNode);
         TraceLinkDirectJump(SI);
         std::string Name = CurrBB->getName().str() + ".exit";
         CurrBB->setName(Name);
@@ -4057,6 +4104,8 @@ void IRFactory::op_exit_tb(const TCGArg *args)
 
     if (!LastInst)
         return;
+
+    InsertTimestampEnd(0);
 
     /* Some guest architectures (e.g., ARM) do not explicitly generete a store
      * instruction to sync the PC value to the memory before exit_tb. We

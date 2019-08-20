@@ -43,6 +43,7 @@ obj-y += llvm/llvm.o              \
          llvm/llvm-target.o       \
          llvm/llvm-soft-perfmon.o \
          llvm/llvm-hard-perfmon.o \
+		 llvm/metrics.o \
          llvm/llvm-annotate.o
 obj-y += $(PASS)/ProfileExec.o        \
          $(PASS)/ReplaceIntrinsic.o   \

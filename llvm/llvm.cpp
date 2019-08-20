@@ -16,6 +16,7 @@
 #include "llvm.h"
 #include "tracer.h"
 #include "optimization.h"
+#include "metrics.h"
 
 
 #define MAX_TRANSLATORS     8
@@ -83,6 +84,7 @@ int MonThreadID;
 
 extern unsigned ProfileThreshold;
 extern unsigned PredictThreshold;
+extern void* METRICS;
 
 /*
  * LLVMEnv()
@@ -145,6 +147,8 @@ LLVMEnv::LLVMEnv() : NumTranslator(1), UseThreading(false), NumFlush(0)
 
     CreateTranslator();
 
+    METRICS = metrics_create();
+
     /* Initialize HPM after the LLVM thread is initialized. */
     HP->Init(MonThreadID);
 
@@ -190,6 +194,8 @@ LLVMEnv::~LLVMEnv()
     }
 
     SP->printProfile();
+    metric_print(METRICS);
+    metrics_delete(METRICS);
 
     delete SP;
     delete QM;
@@ -334,7 +340,7 @@ void LLVMEnv::ParseCommandLineOptions()
     ProfileThreshold = NETProfileThreshold;
     PredictThreshold = NETPredictThreshold;
 
-    /* 
+    /*
      * After this point, command-line options are all set.
      * We need to update functions that are controlled by the options.
      */
