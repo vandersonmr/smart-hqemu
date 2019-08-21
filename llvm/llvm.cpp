@@ -84,7 +84,6 @@ int MonThreadID;
 
 extern unsigned ProfileThreshold;
 extern unsigned PredictThreshold;
-extern void* METRICS;
 
 /*
  * LLVMEnv()
@@ -147,7 +146,7 @@ LLVMEnv::LLVMEnv() : NumTranslator(1), UseThreading(false), NumFlush(0)
 
     CreateTranslator();
 
-    METRICS = metrics_create();
+    //METRICS = metrics_create();
 
     /* Initialize HPM after the LLVM thread is initialized. */
     HP->Init(MonThreadID);
@@ -194,8 +193,8 @@ LLVMEnv::~LLVMEnv()
     }
 
     SP->printProfile();
-    metric_print(METRICS);
-    metrics_delete(METRICS);
+    metric_print();
+    //metrics_delete(METRICS);
 
     delete SP;
     delete QM;

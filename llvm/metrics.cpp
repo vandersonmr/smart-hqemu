@@ -7,6 +7,7 @@
 #include "llvm-soft-perfmon.h"
 #include "metrics.h"
 
+static RegionProfiler METRICS;
 
 RegionProfiler::RegionProfiler()
 {
@@ -50,8 +51,10 @@ void RegionProfiler::print(void)
     OS << "Region;ExecutionTime;#Executed;CompilationTime;#Compilated\n";
     for (auto metric = metrics.begin(); metric != metrics.end(); metric++)
     {
+        char addr[16];
         auto region_data = metric->second;
-        OS  << region_data->address << ";"
+        std::sprintf(addr, "%lx", region_data->address);
+        OS  << addr << ";"
             << region_data->execution_time << ";"
             << region_data->num_executions << ";"
             << region_data->compilation_time << ";"
@@ -67,57 +70,51 @@ RegionMetadata* RegionProfiler::get_or_create_region_data(uint64_t address)
 }
 
 extern "C" {
-    void* metrics_create(void)
+    // void* metrics_create(void)
+    // {
+    //     return reinterpret_cast<void*>(new RegionProfiler());
+    // }
+    //
+    // void metrics_delete(void* data)
+    // {
+    //     if (!data)
+    //         return;
+    //
+    //     RegionProfiler* prof = reinterpret_cast<RegionProfiler*>(data);
+    //     delete prof;
+    // }
+
+    void increment_num_executions(uint64_t address)
     {
-        return reinterpret_cast<void*>(new RegionProfiler());
+        METRICS.increment_num_executions(address, 1);
     }
 
-    void metrics_delete(void* data)
+    void increment_num_compilations(uint64_t address)
     {
-        if (!data)
-            return;
-
-        RegionProfiler* prof = reinterpret_cast<RegionProfiler*>(data);
-        delete prof;
+        METRICS.increment_num_compilations(address, 1);
     }
 
-    void increment_num_executions(void* data, uint64_t address)
+    void increment_exec_time(uint64_t address, uint64_t val)
     {
-        if (!data)
-            return;
-        RegionProfiler* prof = reinterpret_cast<RegionProfiler*>(data);
-        prof->increment_num_executions(address, 1);
+
+        METRICS.increment_exec_time(address, val);
     }
 
-    void increment_num_compilations(void* data, uint64_t address)
+    void increment_comp_time(uint64_t address, uint64_t val)
     {
-        if (!data)
-            return;
-        RegionProfiler* prof = reinterpret_cast<RegionProfiler*>(data);
-        prof->increment_num_compilations(address, 1);
+        METRICS.increment_comp_time(address, val);
     }
 
-    void increment_exec_time(void* data, uint64_t address, uint64_t val)
+    void metric_print(void)
     {
-        if (!data)
-            return;
-        RegionProfiler* prof = reinterpret_cast<RegionProfiler*>(data);
-        prof->increment_exec_time(address, val);
+        METRICS.print();
     }
 
-    void increment_comp_time(void* data, uint64_t address, uint64_t val)
+    unsigned long long get_ticks(void)
     {
-        if (!data)
-            return;
-        RegionProfiler* prof = reinterpret_cast<RegionProfiler*>(data);
-        prof->increment_comp_time(address, val);
+        uint64_t rax,rdx,aux;
+        asm volatile ( "rdtscp\n" : "=a" (rax), "=d" (rdx), "=c" (aux) : : );
+        return (rdx << 32) + rax;
     }
 
-    void metric_print(void* data)
-    {
-        if(!data)
-            return;
-        RegionProfiler* prof = reinterpret_cast<RegionProfiler*>(data);
-        prof->print();
-    }
 }

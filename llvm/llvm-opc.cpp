@@ -50,7 +50,6 @@ static IRFactory::FuncPtr OpcFunc[] = {
 extern LLVMEnv *LLEnv;
 extern hqemu::Mutex llvm_global_lock;
 extern hqemu::Mutex llvm_debug_lock;
-extern void* METRICS;
 /*
  * IRFactory()
  */
@@ -716,13 +715,6 @@ void IRFactory::InitializeLLVMPasses(legacy::FunctionPassManager *FPM)
 #endif
 }
 
-static __inline__ unsigned long long rdtsc(void)
-{
-  unsigned hi, lo;
-  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
-  return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
-}
-
 void IRFactory::Optimize()
 {
 #define addPass(PM, P) do { PM->add(P); } while(0)
@@ -855,7 +847,7 @@ void IRFactory::FinalizeObject()
 void IRFactory::Compile()
 {
     target_ulong pc = Builder->getEntryNode()->getGuestPC();
-    auto time_val = rdtsc();
+    auto time_val = get_ticks();
 
     dbg() << DEBUG_LLVM
           << "Translator " << Translator.getID() << " starts compiling...\n";
@@ -874,9 +866,9 @@ void IRFactory::Compile()
 
     FinalizeObject();
 
-    time_val = rdtsc() - time_val;
-    increment_num_compilations(METRICS, pc);
-    increment_comp_time(METRICS, pc, time_val);
+    time_val = get_ticks() - time_val;
+    increment_num_compilations(pc);
+    increment_comp_time(pc, time_val);
 
     dbg() << DEBUG_LLVM << __func__ << ": done.\n";
 }
@@ -3843,10 +3835,10 @@ void IRFactory::InsertLookupCPBL(GraphNode *CurrNode)
 
 void IRFactory::InsertTimestampBegin(uint64_t id)
 {
-    SmallVector<Value *, 4> Params;
+    SmallVector<Value *, 2> Params;
     Function *F = ResolveFunction("helper_timestamp_begin");
-    Value *Env = ConvertCPUType(F, 0, LastInst);
-    Params.push_back(Env);
+    //Value *Env = ConvertCPUType(F, 0, LastInst);
+    //Params.push_back(Env);
     Params.push_back(CONST64(id));
     CallInst::Create(F, Params, "", LastInst);
     //MF->setConst(CI);
@@ -3854,10 +3846,10 @@ void IRFactory::InsertTimestampBegin(uint64_t id)
 
 void IRFactory::InsertTimestampEnd(uint64_t id)
 {
-    SmallVector<Value *, 4> Params;
+    SmallVector<Value *, 2> Params;
     Function *F = ResolveFunction("helper_timestamp_end");
-    Value *Env = ConvertCPUType(F, 0, LastInst);
-    Params.push_back(Env);
+    //Value *Env = ConvertCPUType(F, 0, LastInst);
+    //Params.push_back(Env);
     Params.push_back(CONST64(id));
     CallInst::Create(F, Params, "", LastInst);
     //MF->setConst(CI);
