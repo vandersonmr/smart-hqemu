@@ -20,6 +20,7 @@
 #include "llvm-state.h"
 #include "llvm-opc.h"
 #include "metrics.h"
+#include "AOSPasses.h"
 #include <iostream>
 
 #define INLINE_THRESHOLD    100     /* max # inlined instructions */
@@ -726,21 +727,32 @@ void IRFactory::Optimize()
 #if defined(ENABLE_PASSES)
     if (runPasses) {
         legacy::FunctionPassManager *FPM = new legacy::FunctionPassManager(Mod);
+        llvm::legacy::PassManager* PM = new llvm::legacy::PassManager();
+        std::vector<uint16_t>& optimization_set = aos::get_random_set();
 
         InitializeLLVMPasses(FPM);
+        aos::populatePassManager(PM, FPM, optimization_set);
+        int *vals = new int[optimization_set.size()];
+        std::cout << "USING SET: ";
+        for (unsigned int i = 0; i<optimization_set.size(); ++i) {
+            vals[i] = optimization_set[i];
+            std::cout << vals[i] << " ";
+        }
+        std::cout << "\n";
+        delete vals;
 
-        addPass(FPM, createProfileExec(this));
-        addPass(FPM, createCombineGuestMemory(this));
-        addPass(FPM, createCombineZExtTrunc());
-        addPassOptional(FPM, createStateMappingPass(this), DisableStateMapping);
-        addPass(FPM, createPromoteMemoryToRegisterPass());
-        addPass(FPM, createCombineCasts(this));
-        addPassOptional(FPM, createSimplifyPointer(this), !EnableSimplifyPointer);
-        addPass(FPM, createAggressiveDCEPass());
-        addPass(FPM, createCFGSimplificationPass());
-        addPass(FPM, createInstructionCombiningPass());
-        addPass(FPM, createRedundantStateElimination(this));
-        addPass(FPM, createCombineCasts(this));
+        // addPass(FPM, createProfileExec(this));
+        // addPass(FPM, createCombineGuestMemory(this));
+        // addPass(FPM, createCombineZExtTrunc());
+        // addPassOptional(FPM, createStateMappingPass(this), DisableStateMapping);
+        // addPass(FPM, createPromoteMemoryToRegisterPass());
+        // addPass(FPM, createCombineCasts(this));
+        // addPassOptional(FPM, createSimplifyPointer(this), !EnableSimplifyPointer);
+        // addPass(FPM, createAggressiveDCEPass());
+        // addPass(FPM, createCFGSimplificationPass());
+        // addPass(FPM, createInstructionCombiningPass());
+        // addPass(FPM, createRedundantStateElimination(this));
+        // addPass(FPM, createCombineCasts(this));
 
         FPM->run(*Func);
         delete FPM;

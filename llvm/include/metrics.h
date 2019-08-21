@@ -10,14 +10,14 @@
 struct RegionMetadata {
     RegionMetadata(uint64_t address)
                 : address(address), num_executions(0), num_compilations(0),
-                  execution_time(0), compilation_time(0) {}
+                  execution_time(0), compilation_time(0), optimizations(NULL) {}
 
     uint64_t address;
     uint64_t num_executions;
     uint32_t num_compilations;
     uint64_t execution_time;
     uint64_t compilation_time;
-    uint32_t optimizations[16];
+    uint32_t *optimizations;
 };
 
 class RegionProfiler {
@@ -31,6 +31,7 @@ public:
     void increment_num_compilations(uint64_t address, int inc);
     void increment_exec_time(uint64_t address, uint64_t val);
     void increment_comp_time(uint64_t address, uint64_t val);
+    void set_optimizations(uint64_t address, uint32_t* vals);
     void print(void);
 
 private:
@@ -44,5 +45,6 @@ extern "C" void increment_num_executions(uint64_t);
 extern "C" void increment_num_compilations(uint64_t);
 extern "C" void increment_exec_time(uint64_t, uint64_t);
 extern "C" void increment_comp_time(uint64_t, uint64_t);
+extern "C" void set_optimizations(uint64_t, uint32_t*);
 extern "C" unsigned long long get_ticks(void);
 #endif /* __METRICS_H */

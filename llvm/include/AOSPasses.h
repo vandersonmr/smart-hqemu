@@ -1,0 +1,141 @@
+#ifndef __AOS_PASSES_H
+#define __AOS_PASSES_H
+
+#include <vector>
+#include <iostream>
+#include "llvm/IR/Module.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/LinkAllPasses.h"
+
+#define MIN_OPT 1
+#define MAX_OPT 109
+
+#define NONE 0
+#define BASICAA 1
+#define EARLY_CSE 2
+#define INSTCOMBINE 3
+#define INDVARS 4
+#define LOOP_INSTSIMPLIFY 5
+#define LOOP_IDIOM 6
+#define LOOP_ROTATE 7
+#define LOOP_UNROLL 8
+#define REASSOCIATE 9
+#define SIMPLIFYCFG 10
+#define UNROLL_ALLOW_PARTIAL 11
+#define SIMPLIFY_LIBCALLS 12
+#define SCALARREPL 13
+#define CONSTPROP 14
+#define ALIGNMENT_FROM_ASSSUMPTIONS 15
+#define SCCP 16
+#define DCE 17
+#define DIE 18
+#define DSE 19
+#define CALLSITE_SPLITTING 20
+#define ADCE 21
+#define GUARD_WIDENING 22
+#define BDCE 23
+#define IRCE 24
+#define LOOP_SINK 25
+#define LOOP_PREDICATION 26
+#define SCALARIZER 27
+#define LOOP_UNSWITCH 28
+#define LOOP_UNROLL_AND_JAM 29
+#define LOOP_REROLL 30
+#define LOOP_VERSIONING_LICM 31
+#define STRUCTURIZECFG 32
+#define _GVN_HOIST 33
+#define _GVN_SINK 34
+#define MLDST_MOTION 35
+#define NEWGVN 36
+#define MEMCPYOPT 37
+#define CONSTHOIST 38
+#define SINK 39
+#define LOWERATOMIC 40
+#define LOWER_GUARD_INTRINSIC 41
+#define MERGEICMPS 42
+#define CORRELATED_PROPAGATION 43
+#define LOWER_EXPECT 44
+#define PARTIALLY_INLINE_LIBCALLS 45
+#define SLSR 46
+#define PLACE_SAFEPOINTS 47
+#define FLOAT2INT 48
+#define LOOP_DISTRIBUTE 49
+#define LOOP_LEAD_ELIM 50
+#define LOOP_VERSIONING 51
+#define LOOP_DATA_PREFETCH 52
+#define INSTSIMPLIFY 53
+#define AGGRESSIVE_INSTCOMBINE 54
+#define LOWERINVOKE 55
+#define INSTNAMER 56
+#define LOWERSWITCH 57
+#define BREAK_CRIT_EDGES 58
+#define LCSSA 59
+#define MEM2REG 60
+#define LOOP_SINMPLIFY 61
+#define SLP_VECTORIZER 62
+#define LOAD_STORE_VECTORIZER 63
+#define LAZY_VALUE_INFO 64
+#define DA 65
+#define COST_MODEL 66
+#define DIVERGENCE 67
+#define INSTCOUNT 68
+#define REGIONS 69
+#define DOMTREE 70
+#define CONSTMERGE 71
+#define GLOBALOPT 72
+#define INLINE 73
+#define IPSCCP 74
+#define PARTIAL_INLINER 75
+#define REWRITE_STATEPOINTS_FOR_GCC 76
+#define STRIP 77
+#define STRIP_NONDEBUG 78
+#define STRIP_DEBUG_DECLARE 79
+#define STRIP_DEAD_DEBUG_INFO 80
+#define	GLOBALDCE 81
+#define ELIM_AVAIL_EXTERN 82
+#define	PRUNE_EH 83
+#define	DEADARGELIM 84
+#define ARGPROMOTION 85
+#define IPCONSTPROP 86
+#define LOOP_EXTRACT 87
+#define LOOP_EXTRACT_SINGLE 88
+#define EXTRACT_BLOCKS 89
+#define STRIP_DEAD_PROTOTYPES 90
+#define MERGE_FUNC 91
+#define BARRIER 92
+#define CALLED_VALUE_PROPAGATION 93
+#define CROSS_DSO_CFI 94
+#define GLOBALSPLIT 95
+#define SROA 96
+#define _GVN 97
+#define PA_EVAL 98
+
+#define LOOP_REDUCE 99
+#define DELINEARIZE 100
+#define SEPARATE_CONST_OFFSET_FROM_GEP 101
+#define LICM 102
+#define LOOP_DELETION 103
+#define NARY_REASSOCIATE 104
+#define LOOP_VECTORIZE 105
+#define TAILCALLELIM 106
+#define JUMP_THREADING 107
+#define FLATTENCFG 108
+
+#define LOOP_INTERCHANGE 109
+#define LOOP_GUARD_WIDENING 110
+#define DIV_REM_PAIRS 111
+#define CODEGENPREPARE 112
+#define SPECULATIVE_EXECUTION 113
+#define INFER_ADDRESS_SPACES 114
+#define INTERNALIZE 115
+#define METARENAMER 116
+
+namespace aos {
+void populatePassManager(llvm::legacy::PassManager*, llvm::legacy::FunctionPassManager*,
+    std::vector<uint16_t>);
+
+std::vector<uint16_t>& get_random_set(void);
+}
+
+
+#endif /* __AOS_PASSES_H */

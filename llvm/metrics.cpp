@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sstream>
+#include <cstring>
 #include "tracer.h"
 #include "utils.h"
 #include "llvm.h"
@@ -42,6 +43,11 @@ void RegionProfiler::increment_comp_time(uint64_t address, uint64_t val)
 {
     RegionMetadata* region = get_or_create_region_data(address);
     region->compilation_time += val;
+}
+
+void RegionProfiler::set_optimizations(uint64_t address, uint32_t* vals) {
+    RegionMetadata* region = get_or_create_region_data(address);
+    region->optimizations = vals;
 }
 
 void RegionProfiler::print(void)
@@ -103,6 +109,11 @@ extern "C" {
     void increment_comp_time(uint64_t address, uint64_t val)
     {
         METRICS.increment_comp_time(address, val);
+    }
+
+    void set_optimizations(uint64_t address, uint32_t* vals)
+    {
+        METRICS.set_optimizations(address, vals);
     }
 
     void metric_print(void)
