@@ -7,6 +7,7 @@
 #include "llvm-target.h"
 #include "llvm-soft-perfmon.h"
 #include "metrics.h"
+#include "AOSPasses.h"
 
 static RegionProfiler METRICS;
 
@@ -45,7 +46,7 @@ void RegionProfiler::increment_comp_time(uint64_t address, uint64_t val)
     region->compilation_time += val;
 }
 
-void RegionProfiler::set_optimizations(uint64_t address, uint32_t* vals) {
+void RegionProfiler::set_optimizations(uint64_t address, uint16_t* vals) {
     RegionMetadata* region = get_or_create_region_data(address);
     region->optimizations = vals;
 }
@@ -54,7 +55,7 @@ void RegionProfiler::print(void)
 {
     auto &OS = DM.debug();
     OS  << "\nMetrics statistics: \n";
-    OS << "Region;ExecutionTime;#Executed;CompilationTime;#Compilated\n";
+    OS << "Region;ExecutionTime;#Executed;CompilationTime;#Compilated;OPTSet\n";
     for (auto metric = metrics.begin(); metric != metrics.end(); metric++)
     {
         char addr[16];
@@ -64,7 +65,22 @@ void RegionProfiler::print(void)
             << region_data->execution_time << ";"
             << region_data->num_executions << ";"
             << region_data->compilation_time << ";"
-            << region_data->num_compilations << "\n";
+            << region_data->num_compilations << ";";
+
+        OS  << "[";
+        if (region_data->optimizations)
+        {
+            int i = 0;
+            while(1){
+                OS << region_data->optimizations[i];
+                if (region_data->optimizations[i])
+                    OS << ",";
+                else
+                    break;
+                i++;
+            }
+        }
+        OS  << "]\n";
     }
 }
 
@@ -111,7 +127,7 @@ extern "C" {
         METRICS.increment_comp_time(address, val);
     }
 
-    void set_optimizations(uint64_t address, uint32_t* vals)
+    void set_optimizations(uint64_t address, uint16_t* vals)
     {
         METRICS.set_optimizations(address, vals);
     }

@@ -716,7 +716,22 @@ void IRFactory::InitializeLLVMPasses(legacy::FunctionPassManager *FPM)
 #endif
 }
 
-void IRFactory::Optimize()
+void IRFactory::InitializeLLVMPasses(legacy::PassManager* MPM)
+{
+    auto TM = EE->getTargetMachine();
+#if defined(LLVM_V35)
+    TM->addAnalysisPasses(*MPM);
+    MPM->add(new DataLayoutPass(Mod));
+    MPM->add(createBasicTargetTransformInfoPass(TM));
+#else
+    PassRegistry &PassReg = *PassRegistry::getPassRegistry();
+    initializeTargetTransformInfoWrapperPassPass(PassReg);
+
+    MPM->add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
+#endif
+}
+
+void IRFactory::Optimize(std::vector<uint16_t>& optimization_set)
 {
 #define addPass(PM, P) do { PM->add(P); } while(0)
 #define addPassOptional(PM, P, Disable) \
@@ -728,19 +743,17 @@ void IRFactory::Optimize()
     if (runPasses) {
         legacy::FunctionPassManager *FPM = new legacy::FunctionPassManager(Mod);
         llvm::legacy::PassManager* PM = new llvm::legacy::PassManager();
-        std::vector<uint16_t>& optimization_set = aos::get_random_set();
 
         InitializeLLVMPasses(FPM);
+        InitializeLLVMPasses(PM);
         aos::populatePassManager(PM, FPM, optimization_set);
-        int *vals = new int[optimization_set.size()];
-        std::cout << "USING SET: ";
-        for (unsigned int i = 0; i<optimization_set.size(); ++i) {
-            vals[i] = optimization_set[i];
-            std::cout << vals[i] << " ";
-        }
-        std::cout << "\n";
-        delete vals;
 
+        // std::cout << "USING SET: ";
+        // for (unsigned int i = 0; i<optimization_set.size(); ++i) {
+        //     vals[i] = optimization_set[i];
+        //     std::cout << vals[i] << " ";
+        // }
+        // std::cout << "\n";
         // addPass(FPM, createProfileExec(this));
         // addPass(FPM, createCombineGuestMemory(this));
         // addPass(FPM, createCombineZExtTrunc());
@@ -755,6 +768,7 @@ void IRFactory::Optimize()
         // addPass(FPM, createCombineCasts(this));
 
         FPM->run(*Func);
+        PM->run(*Mod);
         delete FPM;
     }
 #endif
@@ -859,6 +873,12 @@ void IRFactory::FinalizeObject()
 void IRFactory::Compile()
 {
     target_ulong pc = Builder->getEntryNode()->getGuestPC();
+    std::vector<uint16_t>& optimization_set = aos::get_random_set();
+    uint16_t *opt_array = new uint16_t[optimization_set.size()+1];
+
+    std::copy(optimization_set.begin(), optimization_set.end(), opt_array);
+    opt_array[optimization_set.size()] = 0;
+
     auto time_val = get_ticks();
 
     dbg() << DEBUG_LLVM
@@ -866,7 +886,7 @@ void IRFactory::Compile()
 
     /* Run optimization passes. */
     PreProcess();
-    Optimize();
+    Optimize(optimization_set);
     PostProcess();
 
     VerifyFunction(*Func);
@@ -881,6 +901,7 @@ void IRFactory::Compile()
     time_val = get_ticks() - time_val;
     increment_num_compilations(pc);
     increment_comp_time(pc, time_val);
+    set_optimizations(pc, opt_array);
 
     dbg() << DEBUG_LLVM << __func__ << ": done.\n";
 }
@@ -4109,6 +4130,7 @@ void IRFactory::op_exit_tb(const TCGArg *args)
     if (!LastInst)
         return;
 
+    //InsertTimestampEnd(Builder->getEntryNode()->getGuestPC());
     InsertTimestampEnd(0);
 
     /* Some guest architectures (e.g., ARM) do not explicitly generete a store

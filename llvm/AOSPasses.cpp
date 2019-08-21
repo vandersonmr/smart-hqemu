@@ -3,6 +3,8 @@
 #include <ctime>    // For time()
 #include <cstdlib>  // For srand() and rand()
 
+namespace aos {
+
 static std::vector<std::vector<uint16_t>> BEST10_SET = {
   {INSTCOMBINE, SIMPLIFYCFG, _GVN, INDVARS, LOOP_ROTATE, UNROLL_ALLOW_PARTIAL, LOOP_UNROLL,
     LOOP_ROTATE, LOOP_UNROLL, _GVN, INLINE, EARLY_CSE, BASICAA, REASSOCIATE, INSTCOMBINE},
@@ -21,7 +23,12 @@ static std::vector<std::vector<uint16_t>> BEST10_SET = {
   {EARLY_CSE, SIMPLIFYCFG, _GVN, INLINE, LOOP_REDUCE, LICM, INSTCOMBINE, _GVN, REASSOCIATE}
 };
 
-namespace aos {
+std::vector<uint16_t>& get_random_set(void) {
+    //return BEST10_SET[0];
+    srand(time(0));  // Initialize random number generator.
+    return BEST10_SET[rand()%BEST10_SET.size()];
+}
+
 void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionPassManager* FPM,
     std::vector<uint16_t> Passes) {
   for (unsigned int PassIndex = 0; PassIndex < Passes.size(); PassIndex++) {
@@ -384,10 +391,5 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
   }
 }
 
-std::vector<uint16_t>& get_random_set(void) {
-    return BEST10_SET[0];
-    //srand(time(0));  // Initialize random number generator.
-    //return BEST10_SET[rand()%BEST10_SET.size()];
-}
 
 }

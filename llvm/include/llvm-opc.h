@@ -431,7 +431,7 @@ class IRFactory {
     /* Legalize LLVM IR before running the pre-defined passes. */
     void PreProcess();
 
-    void Optimize();
+    void Optimize(std::vector<uint16_t>&);
 
     /* Legalize LLVM IR after running the pre-defined passes. */
     void PostProcess();
@@ -439,6 +439,8 @@ class IRFactory {
     void FinalizeObject();
 
     void InitializeLLVMPasses(legacy::FunctionPassManager *FPM);
+
+    void InitializeLLVMPasses(llvm::legacy::PassManager* MPM);
 
     uint32_t setRestorePoint(TCGMemOpIdx oi) {
         if (oi != (uint16_t)oi)
