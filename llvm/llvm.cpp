@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <dlfcn.h>
+#include <ctime>
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm-types.h"
 #include "llvm-annotate.h"
@@ -145,8 +146,7 @@ LLVMEnv::LLVMEnv() : NumTranslator(1), UseThreading(false), NumFlush(0)
                 MemoryManager::Create(TraceCache, TraceCacheSize));
 
     CreateTranslator();
-
-    //METRICS = metrics_create();
+    srand(time(0));
 
     /* Initialize HPM after the LLVM thread is initialized. */
     HP->Init(MonThreadID);

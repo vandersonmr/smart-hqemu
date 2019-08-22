@@ -447,6 +447,9 @@ void IRFactory::CreateFunction()
     LastInst = BranchInst::Create(CurrBB, InitBB);
     new UnreachableInst(*Context, ExitBB);
 
+    //Inserts the timestamp
+    InsertTimestampBegin();
+
 
     /* Setup base register for CPUArchState pointer, and register for
      * guest_base. */
@@ -458,6 +461,7 @@ void IRFactory::CreateFunction()
     sprintf(Constraint, "={%s}", CPUReg.Name.c_str());
     auto IA = InlineAsm::get(FunctionType::get(Int8PtrTy, false), "",
                              Constraint, true);
+
     CPUReg.Base = CallInst::Create(IA, "cpu", LastInst);
 
     /* Set special register for guest base if necessary. */
@@ -474,9 +478,6 @@ void IRFactory::CreateFunction()
     CPU = CPUReg.Base;
     CPUStruct = new BitCastInst(CPU, CPUReg.Ty, "cpu.struct", LastInst);
     GEPInsertPos = CPUStruct;
-
-    //Inserts the timestamp
-    InsertTimestampBegin(pc);
 }
 
 /* Prepare an LLVM BasicBlock for a new guest block. */
@@ -653,9 +654,9 @@ void IRFactory::PreProcess()
         for (unsigned i = 0, e = BackEdges.size(); i != e; ++i) {
             BasicBlock *TCGExitBB = BasicBlock::Create(*Context, "exit", Func);
             LastInst = BranchInst::Create(TCGExitBB, TCGExitBB);
-            InsertTimestampEnd(Builder->getEntryNode()->getGuestPC());
-
             StoreInst *SI = new StoreInst(CONST32(0), ExitRequestPtr, true, LastInst);
+
+            InsertTimestampEnd();
             InsertExit(0);
             LastInst->eraseFromParent();
 
@@ -747,31 +748,31 @@ void IRFactory::Optimize(std::vector<uint16_t>& optimization_set)
         llvm::legacy::PassManager* PM = new llvm::legacy::PassManager();
 
         InitializeLLVMPasses(FPM);
-        InitializeLLVMPasses(PM);
-        aos::populatePassManager(PM, FPM, optimization_set);
-
+        //InitializeLLVMPasses(PM);
         // std::cout << "USING SET: ";
         // for (unsigned int i = 0; i<optimization_set.size(); ++i) {
         //     vals[i] = optimization_set[i];
         //     std::cout << vals[i] << " ";
         // }
         // std::cout << "\n";
-        // addPass(FPM, createProfileExec(this));
-        // addPass(FPM, createCombineGuestMemory(this));
-        // addPass(FPM, createCombineZExtTrunc());
-        // addPassOptional(FPM, createStateMappingPass(this), DisableStateMapping);
-        // addPass(FPM, createPromoteMemoryToRegisterPass());
-        // addPass(FPM, createCombineCasts(this));
-        // addPassOptional(FPM, createSimplifyPointer(this), !EnableSimplifyPointer);
-        // addPass(FPM, createAggressiveDCEPass());
-        // addPass(FPM, createCFGSimplificationPass());
-        // addPass(FPM, createInstructionCombiningPass());
-        // addPass(FPM, createRedundantStateElimination(this));
-        // addPass(FPM, createCombineCasts(this));
+        addPass(FPM, createProfileExec(this));
+        addPass(FPM, createCombineGuestMemory(this));
+        addPass(FPM, createCombineZExtTrunc());
+        addPassOptional(FPM, createStateMappingPass(this), DisableStateMapping);
+        addPass(FPM, createPromoteMemoryToRegisterPass());
+        addPass(FPM, createCombineCasts(this));
+        addPassOptional(FPM, createSimplifyPointer(this), !EnableSimplifyPointer);
+        addPass(FPM, createAggressiveDCEPass());
+        addPass(FPM, createCFGSimplificationPass());
+        addPass(FPM, createInstructionCombiningPass());
+        addPass(FPM, createRedundantStateElimination(this));
+        addPass(FPM, createCombineCasts(this));
+        aos::populatePassManager(PM, FPM, optimization_set);
 
         FPM->run(*Func);
-        PM->run(*Mod);
+        //PM->run(*Mod);
         delete FPM;
+        delete PM;
     }
 #endif
 
@@ -3809,7 +3810,6 @@ void IRFactory::InsertLinkAndExit(Instruction *InsertPos)
     CallInst *CI = CallInst::Create(TrapFn, "", InsertPos);
     DebugLoc DL = MF->getDebugLoc(PATCH_TRACE_BLOCK_CHAINING, Idx, Func, Meta);
     CI->setDebugLoc(DL);
-
     MF->setExit(CI);
 
     InsertExit(RetVal);
@@ -3868,26 +3868,20 @@ void IRFactory::InsertLookupCPBL(GraphNode *CurrNode)
     toSink.push_back(CurrBB);
 }
 
-void IRFactory::InsertTimestampBegin(uint64_t id)
+void IRFactory::InsertTimestampBegin(void)
 {
     SmallVector<Value *, 2> Params;
     Function *F = ResolveFunction("helper_timestamp_begin");
-    //Value *Env = ConvertCPUType(F, 0, LastInst);
-    //Params.push_back(Env);
-    Params.push_back(CONST64(id));
+    Params.push_back(CONST64(Builder->getEntryNode()->getGuestPC()));
     CallInst::Create(F, Params, "", LastInst);
-    //MF->setConst(CI);
 }
 
-void IRFactory::InsertTimestampEnd(uint64_t id)
+void IRFactory::InsertTimestampEnd(void)
 {
     SmallVector<Value *, 2> Params;
     Function *F = ResolveFunction("helper_timestamp_end");
-    //Value *Env = ConvertCPUType(F, 0, LastInst);
-    //Params.push_back(Env);
-    Params.push_back(CONST64(id));
+    Params.push_back(CONST64(Builder->getEntryNode()->getGuestPC()));
     CallInst::Create(F, Params, "", LastInst);
-    //MF->setConst(CI);
 }
 
 void IRFactory::TraceValidateCPBL(GraphNode *NextNode, StoreInst *StorePC)
@@ -4045,8 +4039,7 @@ void IRFactory::TraceLink(StoreInst *SI)
             return;
         }
 
-        //InsertTimestamp(CurrNode);
-        InsertTimestampEnd(Builder->getEntryNode()->getGuestPC());
+        InsertTimestampEnd();
         TraceLinkDirectJump(SI);
         std::string Name = CurrBB->getName().str() + ".exit";
         CurrBB->setName(Name);
@@ -4132,9 +4125,6 @@ void IRFactory::op_exit_tb(const TCGArg *args)
 
     if (!LastInst)
         return;
-
-    //InsertTimestampEnd(Builder->getEntryNode()->getGuestPC());
-    //InsertTimestampEnd(0);
 
     /* Some guest architectures (e.g., ARM) do not explicitly generete a store
      * instruction to sync the PC value to the memory before exit_tb. We

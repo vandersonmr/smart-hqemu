@@ -403,8 +403,8 @@ class IRFactory {
     /* Link basic blocks of indirect branch. */
     void TraceLinkIndirectJump(GraphNode *NextNode, StoreInst *SI);
 
-    void InsertTimestampBegin(uint64_t id);
-    void InsertTimestampEnd(uint64_t id);
+    void InsertTimestampBegin(void);
+    void InsertTimestampEnd(void);
 
     /* Insert code for IBTC hash table lookup. */
     void InsertLookupIBTC(GraphNode *CurrNode);
