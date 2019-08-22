@@ -653,6 +653,8 @@ void IRFactory::PreProcess()
         for (unsigned i = 0, e = BackEdges.size(); i != e; ++i) {
             BasicBlock *TCGExitBB = BasicBlock::Create(*Context, "exit", Func);
             LastInst = BranchInst::Create(TCGExitBB, TCGExitBB);
+            InsertTimestampEnd(Builder->getEntryNode()->getGuestPC());
+
             StoreInst *SI = new StoreInst(CONST32(0), ExitRequestPtr, true, LastInst);
             InsertExit(0);
             LastInst->eraseFromParent();
@@ -4044,6 +4046,7 @@ void IRFactory::TraceLink(StoreInst *SI)
         }
 
         //InsertTimestamp(CurrNode);
+        InsertTimestampEnd(Builder->getEntryNode()->getGuestPC());
         TraceLinkDirectJump(SI);
         std::string Name = CurrBB->getName().str() + ".exit";
         CurrBB->setName(Name);
@@ -4131,7 +4134,7 @@ void IRFactory::op_exit_tb(const TCGArg *args)
         return;
 
     //InsertTimestampEnd(Builder->getEntryNode()->getGuestPC());
-    InsertTimestampEnd(0);
+    //InsertTimestampEnd(0);
 
     /* Some guest architectures (e.g., ARM) do not explicitly generete a store
      * instruction to sync the PC value to the memory before exit_tb. We
