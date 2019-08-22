@@ -17,7 +17,7 @@ RegionProfiler::RegionProfiler()
 
 RegionProfiler::~RegionProfiler()
 {
-    for (auto metric = metrics.begin(); metric != metrics.end(); metric++)
+    for (auto metric = metrics.begin(); metric != metrics.end(); ++metric)
         delete metric->second;
     metrics.clear();
 }
@@ -56,7 +56,7 @@ void RegionProfiler::print(void)
     auto &OS = DM.debug();
     OS  << "\nMetrics statistics: \n";
     OS << "Region;ExecutionTime;#Executed;CompilationTime;#Compilated;OPTSet\n";
-    for (auto metric = metrics.begin(); metric != metrics.end(); metric++)
+    for (auto metric = metrics.begin(); metric != metrics.end(); ++metric)
     {
         char addr[16];
         auto region_data = metric->second;

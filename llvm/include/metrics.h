@@ -6,6 +6,7 @@
 #include "qemu-types.h"
 #include "llvm-types.h"
 #include "utils.h"
+#include "parallel_hashmap/phmap.h"
 
 struct RegionMetadata {
     RegionMetadata(uint64_t address)
@@ -27,7 +28,7 @@ struct RegionMetadata {
 };
 
 class RegionProfiler {
-    std::unordered_map<uint64_t , RegionMetadata*> metrics;
+  phmap::flat_hash_map<uint64_t , RegionMetadata*> metrics;
 
 public:
     RegionProfiler(void);
