@@ -57,17 +57,23 @@ void RegionProfiler::set_optimizations(uint64_t address, uint16_t* vals) {
         region->optimizations = vals;
 }
 
+void RegionProfiler::set_DNA(uint64_t address, std::string vals) {
+    RegionMetadata* region = get_or_create_region_data(address);
+    region->DNA = vals;
+}
+
 void RegionProfiler::print(void)
 {
     auto &OS = DM.debug();
     OS  << "\nMetrics statistics: \n";
-    OS << "Region;ExecutionTime;#Executed;CompilationTime;#Compilated;OPTSet\n";
+    OS << "DNA;Region;ExecutionTime;#Executed;CompilationTime;#Compilated;OPTSet\n";
     for (auto metric = metrics.begin(); metric != metrics.end(); metric++)
     {
         char addr[16];
         auto region_data = metric->second;
         std::sprintf(addr, "%lx", region_data->address);
-        OS  << addr << ";"
+        OS  << region_data->DNA << ";"
+            << addr << ";"
             << region_data->execution_time << ";"
             << region_data->num_executions << ";"
             << region_data->compilation_time << ";"
@@ -136,6 +142,11 @@ extern "C" {
     void set_optimizations(uint64_t address, uint16_t* vals)
     {
         METRICS.set_optimizations(address, vals);
+    }
+
+    void set_DNA(uint64_t address, const char* vals)
+    {
+        METRICS.set_DNA(address, std::string(vals));
     }
 
     void metric_print(void)
