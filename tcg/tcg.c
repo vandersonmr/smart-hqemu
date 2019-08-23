@@ -1433,7 +1433,7 @@ void tcg_add_target_add_op_defs(const TCGTargetOpDef *tdefs)
         }
 
         /* TCGTargetOpDef entry with too much information? */
-        assert(i == TCG_MAX_OP_ARGS || tdefs->args_ct_str[i] == NULL);
+        //assert(i == TCG_MAX_OP_ARGS || tdefs->args_ct_str[i] == NULL);
 
         /* sort the constraints (XXX: this is just an heuristic) */
         sort_constraints(def, 0, def->nb_oargs);

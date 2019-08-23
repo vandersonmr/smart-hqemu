@@ -1,36 +1,47 @@
-#include "AOSPasses.h"
 #include <random>
 #include <ctime>    // For time()
 #include <cstdlib>  // For srand() and rand()
+#include "tracer.h"
+#include "utils.h"
+#include "llvm.h"
+#include "AOSPasses.h"
 
 namespace aos {
 
 static std::vector<std::vector<uint16_t>> BEST10_SET = {
-  {INSTCOMBINE, SIMPLIFYCFG, _GVN, INDVARS, LOOP_ROTATE, UNROLL_ALLOW_PARTIAL, LOOP_UNROLL,
+  {INSTCOMBINE, SIMPLIFYCFG, _GVN, INDVARS, LOOP_ROTATE, LOOP_UNROLL,
     LOOP_ROTATE, LOOP_UNROLL, _GVN, INLINE, EARLY_CSE, BASICAA, REASSOCIATE, INSTCOMBINE},
-  {SIMPLIFY_LIBCALLS, SIMPLIFYCFG, UNROLL_ALLOW_PARTIAL, INTERNALIZE, _GVN, INSTCOMBINE, INLINE,
-    GLOBALOPT, SCALARREPL, LOOP_ROTATE, LOOP_UNROLL, LOOP_INSTSIMPLIFY},
-  {_GVN, LOOP_ROTATE, INTERNALIZE, INLINE, LICM, TAILCALLELIM, INSTCOMBINE, BASICAA, INDVARS},
-  {LOOP_ROTATE, LOOP_IDIOM, LOOP_DELETION, _GVN}, /* Gets ERR CODEGENPREPARE (3) */
-  {LOOP_ROTATE, INLINE, SIMPLIFY_LIBCALLS, BASICAA, LICM, CONSTMERGE, INDVARS, UNROLL_ALLOW_PARTIAL,
+  {SIMPLIFYCFG, _GVN, INSTCOMBINE, INLINE,
+    GLOBALOPT, LOOP_ROTATE, LOOP_UNROLL, LOOP_INSTSIMPLIFY},
+  {_GVN, LOOP_ROTATE, INLINE, LICM, TAILCALLELIM, INSTCOMBINE, BASICAA, INDVARS},
+  {LOOP_ROTATE, LOOP_IDIOM, LOOP_DELETION, _GVN},
+  {LOOP_ROTATE, INLINE, BASICAA, LICM, CONSTMERGE, INDVARS,
     LOOP_UNROLL, REASSOCIATE, _GVN},
-  {SIMPLIFYCFG, TAILCALLELIM, EARLY_CSE, LOOP_ROTATE, INTERNALIZE, PARTIAL_INLINER, INSTCOMBINE,
+  {SIMPLIFYCFG, TAILCALLELIM, EARLY_CSE, LOOP_ROTATE, PARTIAL_INLINER, INSTCOMBINE,
     INLINE, IPSCCP},
-  {INTERNALIZE, INLINE, GLOBALOPT, EARLY_CSE, LICM, BASICAA, INDVARS, LOOP_REDUCE},
+  {INLINE, GLOBALOPT, EARLY_CSE, LICM, BASICAA, INDVARS, LOOP_REDUCE},
   {_GVN, TAILCALLELIM, REASSOCIATE, BASICAA, INLINE, LOOP_ROTATE, INDVARS,
-    REASSOCIATE}, /* Gets Err (7) CODEGENPREPARE */
+    REASSOCIATE},
   {SIMPLIFYCFG, TAILCALLELIM, INSTCOMBINE, EARLY_CSE},
   {EARLY_CSE, SIMPLIFYCFG, _GVN, INLINE, LOOP_REDUCE, LICM, INSTCOMBINE, _GVN, REASSOCIATE}
 };
 
-std::vector<uint16_t>& get_random_set(void) {
+std::vector<uint16_t> optimizations;
+
+std::vector<uint16_t>& get_random_set(int size) {
     //return BEST10_SET[0];
     // Initialize random number generator.
-    return BEST10_SET[rand()%BEST10_SET.size()];
+    optimizations.clear();
+    for (int i = 0; i<size; ++i)
+        optimizations.push_back((rand()%MAX_OPT)+MIN_OPT);
+
+    return optimizations;
+    // return BEST10_SET[rand()%BEST10_SET.size()];
 }
 
 void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionPassManager* FPM,
     std::vector<uint16_t> Passes) {
+  auto &OS = DM.debug();
   for (unsigned int PassIndex = 0; PassIndex < Passes.size(); PassIndex++) {
     switch (Passes[PassIndex]) {
       case BASICAA:
@@ -40,7 +51,7 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
         FPM->add(llvm::createEarlyCSEPass());
         break;
       case _GVN: //**
-        FPM->add(llvm::createNewGVNPass());
+        //FPM->add(llvm::createNewGVNPass());
         break;
       case INSTCOMBINE: //**
         FPM->add(llvm::createInstructionCombiningPass());
@@ -78,15 +89,15 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
       case TAILCALLELIM:
         FPM->add(llvm::createTailCallEliminationPass());
         break;
-      case UNROLL_ALLOW_PARTIAL:
-        // doesn't exist anymore
-        break;
-      case SIMPLIFY_LIBCALLS:
-        // doesn't exist anymore
-        break;
-      case SCALARREPL:
-        // doesn't exist anymore
-        break;
+      // case UNROLL_ALLOW_PARTIAL:
+      //   // doesn't exist anymore
+      //   break;
+      // case SIMPLIFY_LIBCALLS:
+      //   // doesn't exist anymore
+      //   break;
+      // case SCALARREPL:
+      //   // doesn't exist anymore
+      //   break;
       case CONSTPROP:
         FPM->add(llvm::createConstantPropagationPass());
         break;
@@ -111,9 +122,9 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
       case ADCE:
         FPM->add(llvm::createAggressiveDCEPass());
         break;
-      case GUARD_WIDENING:
-        FPM->add(llvm::createGuardWideningPass());
-        break;
+      // case GUARD_WIDENING:
+      //   FPM->add(llvm::createGuardWideningPass());
+      //   break;
       case BDCE:
         FPM->add(llvm::createBitTrackingDCEPass());
         break;
@@ -129,9 +140,9 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
       case LOOP_UNSWITCH: //**
         FPM->add(llvm::createLoopUnswitchPass());
         break;
-      // case LOOP_UNROLL_AND_JAM:
-      //   FPM->add(llvm::createLoopUnrollAndJamPass());
-      //   break;
+      case LOOP_UNROLL_AND_JAM:
+        // FPM->add(llvm::createLoopUnrollAndJamPass());
+        break;
       case LOOP_REROLL:
         FPM->add(llvm::createLoopRerollPass());
         break;
@@ -189,9 +200,9 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
       case SEPARATE_CONST_OFFSET_FROM_GEP:
         FPM->add(llvm::createSeparateConstOffsetFromGEPPass());
         break;
-      case SLSR:
-        FPM->add(llvm::createStraightLineStrengthReducePass());
-        break;
+      // case SLSR:
+      //   FPM->add(llvm::createStraightLineStrengthReducePass());
+      //   break;
       case PLACE_SAFEPOINTS:
         FPM->add(llvm::createPlaceSafepointsPass());
         break;
@@ -204,8 +215,8 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
       case LOOP_DISTRIBUTE:
         FPM->add(llvm::createLoopDistributePass());
         break;
-      case LOOP_LEAD_ELIM:
-        FPM->add(llvm::createLoopLoadEliminationPass());
+      case LOOP_LOAD_ELIM:
+         FPM->add(llvm::createLoopLoadEliminationPass());
         break;
       case LOOP_VERSIONING:
         FPM->add(llvm::createLoopVersioningPass());
@@ -213,12 +224,12 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
       case LOOP_DATA_PREFETCH:
         FPM->add(llvm::createLoopDataPrefetchPass());
         break;
-      // case INSTSIMPLIFY:
+      case INSTSIMPLIFY:
       //   FPM->add(llvm::createInstSimplifyLegacyPass());
-      //   break;
-      // case AGGRESSIVE_INSTCOMBINE:
+        break;
+      case AGGRESSIVE_INSTCOMBINE:
       //   FPM->add(llvm::createAggressiveInstCombinerPass());
-      //   break;
+        break;
       case LOWERINVOKE:
         FPM->add(llvm::createLowerInvokePass());
         break;
@@ -264,9 +275,9 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
       case DIVERGENCE:
         FPM->add(llvm::createDivergenceAnalysisPass());
         break;
-      case INSTCOUNT:
-        FPM->add(llvm::createInstCountPass());
-        break;
+      //case INSTCOUNT:
+      //   FPM->add(llvm::createInstCountPass());
+    //    break;
       case REGIONS:
         FPM->add(llvm::createRegionInfoPass());
         break;
@@ -356,27 +367,27 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
       case METARENAMER:
         MPM->add(llvm::createMetaRenamerPass());
         break;
-      case PA_EVAL:
-        FPM->add(llvm::createPAEvalPass());
-        break;
-      case INTERNALIZE:
-        //MPM->add(llvm::createInternalizePass());
-        break;
+      // case PA_EVAL:
+      //   FPM->add(llvm::createPAEvalPass());
+      //   break;
+      // case INTERNALIZE:
+      //   //MPM->add(llvm::createInternalizePass());
+      //   break;
       case INFER_ADDRESS_SPACES:
         FPM->add(llvm::createInferAddressSpacesPass());
         break;
-      case SPECULATIVE_EXECUTION:
-        FPM->add(llvm::createSpeculativeExecutionPass());
-        break;
-      case CODEGENPREPARE:
-        FPM->add(llvm::createCodeGenPreparePass());
-        break;
+      // case SPECULATIVE_EXECUTION:
+      //   FPM->add(llvm::createSpeculativeExecutionPass());
+      //   break;
+      // case CODEGENPREPARE:
+      //   FPM->add(llvm::createCodeGenPreparePass());
+      //   break;
       // case LOOP_GUARD_WIDENING:
       //   FPM->add(llvm::createLoopGuardWideningPass());
       //   break;
-      case DIV_REM_PAIRS:
-        FPM->add(llvm::createDivRemPairsPass());
-        break;
+      // case DIV_REM_PAIRS:
+      //   FPM->add(llvm::createDivRemPairsPass());
+      //   break;
       case LOOP_INTERCHANGE:
         FPM->add(llvm::createLoopInterchangePass());
         break;
@@ -384,8 +395,7 @@ void populatePassManager(llvm::legacy::PassManager* MPM, llvm::legacy::FunctionP
         FPM->add(llvm::createSROAPass());
         break;
       default:
-        std::cerr << "Trying to use an invalid optimization pass!\n";
-        exit(1);
+        OS << "Trying to use an invalid optimization pass no.: `" << Passes[PassIndex] << "`. Ignoring\n";
         break;
     }
   }
