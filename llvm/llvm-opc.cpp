@@ -19,6 +19,7 @@
 #include "llvm-target.h"
 #include "llvm-state.h"
 #include "llvm-opc.h"
+#include "llvm-dna.h"
 #include "metrics.h"
 #include "AOSPasses.h"
 #include <iostream>
@@ -878,6 +879,8 @@ void IRFactory::Compile()
     target_ulong pc = Builder->getEntryNode()->getGuestPC();
     std::vector<uint16_t>& optimization_set = aos::get_random_set();
     uint16_t *opt_array = new uint16_t[optimization_set.size()+1];
+
+    set_DNA(pc, encode(Func).c_str());
 
     std::copy(optimization_set.begin(), optimization_set.end(), opt_array);
     opt_array[optimization_set.size()] = 0;

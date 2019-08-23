@@ -25,6 +25,7 @@ struct RegionMetadata {
     uint64_t execution_time;
     uint64_t compilation_time;
     uint16_t *optimizations;
+    std::string DNA;
 };
 
 class RegionProfiler {
@@ -39,6 +40,7 @@ public:
     void increment_exec_time(uint64_t address, uint64_t val);
     void increment_comp_time(uint64_t address, uint64_t val);
     void set_optimizations(uint64_t address, uint16_t* vals);
+    void set_DNA(uint64_t address, std::string vals);
     void print(void);
 
 private:
@@ -53,5 +55,6 @@ extern "C" void increment_num_compilations(uint64_t);
 extern "C" void increment_exec_time(uint64_t, uint64_t);
 extern "C" void increment_comp_time(uint64_t, uint64_t);
 extern "C" void set_optimizations(uint64_t, uint16_t*);
+extern "C" void set_DNA(uint64_t, const char*);
 extern "C" unsigned long long get_ticks(void);
 #endif /* __METRICS_H */
