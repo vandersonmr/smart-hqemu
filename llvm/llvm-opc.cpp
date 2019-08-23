@@ -875,12 +875,7 @@ void IRFactory::Compile()
     //std::vector<uint16_t> optimization_set;
     std::vector<uint16_t>& optimization_set = aos::get_random_set(8);
     uint16_t *opt_array = new uint16_t[optimization_set.size()+1];
-<<<<<<< HEAD
-=======
-
     set_DNA(pc, encode(Func).c_str());
-
->>>>>>> 6b9dd1b3499106db4d8e64569927f9d7f5db01df
     std::copy(optimization_set.begin(), optimization_set.end(), opt_array);
     opt_array[optimization_set.size()] = 0;
     //
