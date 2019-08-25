@@ -26,30 +26,35 @@ RegionProfiler::~RegionProfiler()
 void RegionProfiler::increment_num_executions(uint64_t address, int inc = 1)
 {
     RegionMetadata* region = get_or_create_region_data(address);
-    region->num_executions += inc;
+    if(region)
+        region->num_executions += inc;
 }
 
 void RegionProfiler::increment_num_compilations(uint64_t address, int inc = 1)
 {
     RegionMetadata* region = get_or_create_region_data(address);
-    region->num_compilations += inc;
+    if(region)
+        region->num_compilations += inc;
 }
 
 void RegionProfiler::increment_exec_time(uint64_t address, uint64_t val)
 {
     RegionMetadata* region = get_or_create_region_data(address);
-    region->execution_time += val;
+    if(region)
+        region->execution_time += val;
 }
 
 void RegionProfiler::increment_comp_time(uint64_t address, uint64_t val)
 {
     RegionMetadata* region = get_or_create_region_data(address);
-    region->compilation_time += val;
+    if(region)
+        region->compilation_time += val;
 }
 
 void RegionProfiler::set_optimizations(uint64_t address, uint16_t* vals) {
     RegionMetadata* region = get_or_create_region_data(address);
-    region->optimizations = vals;
+    if(region)
+        region->optimizations = vals;
 }
 
 void RegionProfiler::set_DNA(uint64_t address, std::string vals) {

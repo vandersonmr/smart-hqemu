@@ -749,13 +749,7 @@ void IRFactory::Optimize(std::vector<uint16_t>& optimization_set)
         llvm::legacy::PassManager* PM = new llvm::legacy::PassManager();
 
         InitializeLLVMPasses(FPM);
-        //InitializeLLVMPasses(PM);
-        // std::cout << "USING SET: ";
-        // for (unsigned int i = 0; i<optimization_set.size(); ++i) {
-        //     vals[i] = optimization_set[i];
-        //     std::cout << vals[i] << " ";
-        // }
-        // std::cout << "\n";
+
         addPass(FPM, createProfileExec(this));
         addPass(FPM, createCombineGuestMemory(this));
         addPass(FPM, createCombineZExtTrunc());
@@ -769,6 +763,7 @@ void IRFactory::Optimize(std::vector<uint16_t>& optimization_set)
         addPass(FPM, createRedundantStateElimination(this));
         addPass(FPM, createCombineCasts(this));
         aos::populatePassManager(PM, FPM, optimization_set);
+
 
         FPM->run(*Func);
         //PM->run(*Mod);
@@ -877,14 +872,19 @@ void IRFactory::FinalizeObject()
 void IRFactory::Compile()
 {
     target_ulong pc = Builder->getEntryNode()->getGuestPC();
-    std::vector<uint16_t>& optimization_set = aos::get_random_set();
+    //std::vector<uint16_t> optimization_set;
+    std::vector<uint16_t>& optimization_set = aos::get_random_set(8);
     uint16_t *opt_array = new uint16_t[optimization_set.size()+1];
-
     set_DNA(pc, encode(Func).c_str());
-
     std::copy(optimization_set.begin(), optimization_set.end(), opt_array);
     opt_array[optimization_set.size()] = 0;
+    //
+    // std::cerr << "***Using opts no.: [" ;
+    // for (auto element = optimization_set.begin(); element != optimization_set.end(); element++)
+    //     std::cerr << *element << ",";
+    // std::cerr << "]" << std::endl;
 
+    set_optimizations(pc, opt_array);
     auto time_val = get_ticks();
 
     dbg() << DEBUG_LLVM
@@ -907,7 +907,7 @@ void IRFactory::Compile()
     time_val = get_ticks() - time_val;
     increment_num_compilations(pc);
     increment_comp_time(pc, time_val);
-    set_optimizations(pc, opt_array);
+
 
     dbg() << DEBUG_LLVM << __func__ << ": done.\n";
 }

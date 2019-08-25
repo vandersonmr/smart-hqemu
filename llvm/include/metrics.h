@@ -1,7 +1,7 @@
 #ifndef __METRICS_H
 #define __METRICS_H
 
-#include <unordered_map>
+//#include <map>
 #include <cstdint>
 #include "qemu-types.h"
 #include "llvm-types.h"
@@ -15,8 +15,10 @@ struct RegionMetadata {
 
     ~RegionMetadata()
     {
-        if (optimizations)
+        if (optimizations) {
             delete optimizations;
+            optimizations = NULL;
+        }
     }
 
     uint64_t address;
