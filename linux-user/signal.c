@@ -29,6 +29,8 @@
 #include "qemu-common.h"
 #include "target_signal.h"
 
+void metric_print(void);
+
 //#define DEBUG_SIGNAL
 
 static struct target_sigaltstack target_sigaltstack_used = {
@@ -460,6 +462,7 @@ static void QEMU_NORETURN force_sig(int target_sig)
         getrlimit(RLIMIT_CORE, &nodump);
         nodump.rlim_cur=0;
         setrlimit(RLIMIT_CORE, &nodump);
+        metric_print();
         (void) fprintf(stderr, "qemu: uncaught target signal %d (%s) - %s\n",
             target_sig, strsignal(host_sig), "core dumped" );
     }
