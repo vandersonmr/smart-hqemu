@@ -23,6 +23,7 @@
 #include "metrics.h"
 #include "AOSPasses.h"
 #include <iostream>
+#include <sstream>
 
 #define INLINE_THRESHOLD    100     /* max # inlined instructions */
 #define INLINE_INSTCOUNT    20      /* max instruction count for inlining a small function */
@@ -750,7 +751,7 @@ void IRFactory::Optimize(std::vector<uint16_t>& optimization_set)
 
         InitializeLLVMPasses(FPM);
 
-        addPass(FPM, createProfileExec(this));
+        /*addPass(FPM, createProfileExec(this));
         addPass(FPM, createCombineGuestMemory(this));
         addPass(FPM, createCombineZExtTrunc());
         addPassOptional(FPM, createStateMappingPass(this), DisableStateMapping);
@@ -761,7 +762,7 @@ void IRFactory::Optimize(std::vector<uint16_t>& optimization_set)
         addPass(FPM, createCFGSimplificationPass());
         addPass(FPM, createInstructionCombiningPass());
         addPass(FPM, createRedundantStateElimination(this));
-        addPass(FPM, createCombineCasts(this));
+        addPass(FPM, createCombineCasts(this));*/
         aos::populatePassManager(PM, FPM, optimization_set);
 
 
@@ -872,8 +873,20 @@ void IRFactory::FinalizeObject()
 void IRFactory::Compile()
 {
     target_ulong pc = Builder->getEntryNode()->getGuestPC();
-    //std::vector<uint16_t> optimization_set;
-    std::vector<uint16_t>& optimization_set = aos::get_random_set(8);
+    std::vector<uint16_t> optimization_set;
+
+    std::stringstream ss(std::string(std::getenv("seq")));
+
+    ss.ignore();
+    for (int i; ss >> i;) {
+        optimization_set.push_back(i);
+        if (ss.peek() == ',')
+            ss.ignore();
+        if (ss.peek() == ']')
+            break;
+    }
+
+    //std::vector<uint16_t>& optimization_set = aos::get_random_set(8);
     uint16_t *opt_array = new uint16_t[optimization_set.size()+1];
     set_DNA(pc, encode(Func).c_str());
     std::copy(optimization_set.begin(), optimization_set.end(), opt_array);
@@ -885,14 +898,15 @@ void IRFactory::Compile()
     // std::cerr << "]" << std::endl;
 
     set_optimizations(pc, opt_array);
-    auto time_val = get_ticks();
 
     dbg() << DEBUG_LLVM
           << "Translator " << Translator.getID() << " starts compiling...\n";
 
     /* Run optimization passes. */
     PreProcess();
+    auto time_val = get_ticks();
     Optimize(optimization_set);
+    time_val = get_ticks() - time_val;
     PostProcess();
 
     VerifyFunction(*Func);
@@ -904,7 +918,6 @@ void IRFactory::Compile()
 
     FinalizeObject();
 
-    time_val = get_ticks() - time_val;
     increment_num_compilations(pc);
     increment_comp_time(pc, time_val);
 
@@ -3852,6 +3865,7 @@ void IRFactory::InsertLookupIBTC(GraphNode *CurrNode)
     }
 
     BB = CommonBB["ibtc"];
+    InsertTimestampEnd();
     BranchInst::Create(BB, LastInst);
 }
 

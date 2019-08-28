@@ -82,12 +82,13 @@ void helper_timestamp_begin(uint64_t region_id)
 {
     reg_pc = region_id;
     time_elapsed = get_ticks();
-    increment_num_executions(reg_pc);
 }
 
 void helper_timestamp_end(uint64_t region_id)
 {
-    increment_exec_time(reg_pc, get_ticks()-time_elapsed);
+    uint64_t a = get_ticks()-time_elapsed;
+    increment_exec_time(reg_pc, a);
+    increment_num_executions(reg_pc);
     time_elapsed = reg_pc = 0;
 }
 /*

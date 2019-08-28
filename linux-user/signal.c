@@ -462,7 +462,6 @@ static void QEMU_NORETURN force_sig(int target_sig)
         getrlimit(RLIMIT_CORE, &nodump);
         nodump.rlim_cur=0;
         setrlimit(RLIMIT_CORE, &nodump);
-        metric_print();
         (void) fprintf(stderr, "qemu: uncaught target signal %d (%s) - %s\n",
             target_sig, strsignal(host_sig), "core dumped" );
     }
@@ -481,6 +480,8 @@ static void QEMU_NORETURN force_sig(int target_sig)
     /* For some reason raise(host_sig) doesn't send the signal when
      * statically linked on x86-64. */
     kill(getpid(), host_sig);
+
+    metric_print();
 
     /* Make sure the signal isn't masked (just reuse the mask inside
     of act) */
@@ -584,6 +585,10 @@ static void host_signal_handler(int host_signum, siginfo_t *info,
         && info->si_code > 0) {
         if (cpu_signal_handler(host_signum, info, puc))
             return;
+    }
+
+    if (host_signum == SIGINT) {
+      metric_print();
     }
 
     /* get target signal number */

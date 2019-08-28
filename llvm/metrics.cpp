@@ -26,7 +26,7 @@ RegionProfiler::~RegionProfiler()
 void RegionProfiler::increment_num_executions(uint64_t address, int inc = 1)
 {
     RegionMetadata* region = get_or_create_region_data(address);
-    if(region)
+    if (region)
         region->num_executions += inc;
 }
 
