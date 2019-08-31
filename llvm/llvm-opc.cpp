@@ -751,20 +751,13 @@ void IRFactory::Optimize(std::vector<uint16_t>& optimization_set)
 
         InitializeLLVMPasses(FPM);
 
-        /*addPass(FPM, createProfileExec(this));
+        addPass(FPM, createProfileExec(this));
         addPass(FPM, createCombineGuestMemory(this));
         addPass(FPM, createCombineZExtTrunc());
-        addPassOptional(FPM, createStateMappingPass(this), DisableStateMapping);
-        addPass(FPM, createPromoteMemoryToRegisterPass());
         addPass(FPM, createCombineCasts(this));
-        addPassOptional(FPM, createSimplifyPointer(this), !EnableSimplifyPointer);
-        addPass(FPM, createAggressiveDCEPass());
-        addPass(FPM, createCFGSimplificationPass());
-        addPass(FPM, createInstructionCombiningPass());
         addPass(FPM, createRedundantStateElimination(this));
-        addPass(FPM, createCombineCasts(this));*/
-        aos::populatePassManager(PM, FPM, optimization_set);
 
+        aos::populatePassManager(PM, FPM, optimization_set);
 
         FPM->run(*Func);
         //PM->run(*Mod);
@@ -878,7 +871,8 @@ void IRFactory::Compile()
     std::stringstream ss(std::string(std::getenv("seq")));
 
     ss.ignore();
-    for (int i; ss >> i;) {
+    for (int i;;) {
+        ss >> i;
         optimization_set.push_back(i);
         if (ss.peek() == ',')
             ss.ignore();
